@@ -223,6 +223,8 @@ if __name__ == "__main__":
     #test Enigma
 
     enigma = Enigma.getDoubleStepEnigma()
+
+    enigma.plugboard.addPlug("h","z")
     
     rotorPos = enigma.getRotorPositions()
 
@@ -235,8 +237,9 @@ if __name__ == "__main__":
     encMsg = enigma.encodeMessage(msg)
     print(encMsg)
     #expected output for a 'double step test' enigma (rotor positions K D O)
-    #where ring setting on right rotor is 25 (Z-26):
-    #gqzzeprghu
+    #where ring setting on right rotor is 25 (Z-26)
+    #and plugboard has H plugged to Z:
+    #dqhheprgzu
 
     #decode that message by resetting the machine and using it as a decoder
     enigma.setRotorPositions(rotorPos)
