@@ -5,7 +5,7 @@ from letterswitcher import LetterSwitcher, LettermapException
 from enum import Enum
 
 #define an enumeration for the 
-#different type of rotors supported
+#different types of rotors supported
 #TODO: support more rotors
 class RotorType(Enum):
 	I = 0
@@ -38,6 +38,9 @@ class Rotor(LetterSwitcher):
 	#each of these is defined as the index of the letter 
 	#that displays in the window when the notch is 
 	#lined up to rotate the next rotor with the next keypress
+	#(note: this is not actually where the physical notch is on a real Engima rotor
+	# storing notch positions this way is just easier to implement
+	# however, the output for a given rotor configuration should still be the same)
 	__rotorNotchPositions = (
 		16,
 		4,
@@ -103,13 +106,26 @@ class Rotor(LetterSwitcher):
 		#if rotorType is invalid
 		lettermap = self.getRotorLettermap(rotorType)
 		
+		#set the notch position of this rotor to the predefined notch position 
+		#for this particular rotor type
 		self.notchPosition = self.getRotorNotchPos(rotorType)
+		#note: notch position being stored as a single value disallows
+		#the use of rotors with multiple notches
+		#multi-notched rotors were created, but are not supported at this time
+		#TODO: support multi-notched rotors
+
 		
 		#used to keep track of the rotor's rotation,
 		#rotorPosition maps 0 - 25 to the letters a to z
 		#that you would see through the viewing window on an actual Enigma
 		self.rotorPosition = 0
 		#this will be used as an offset to access the lettermap
+
+		#initialize ring setting (sometimes called ringstellung)
+		#this is currently unused, as ring settings are not currently 
+		#supported
+		#TODO: support ring settings
+		self.ringSetting = 0
 		
 		#run super constructor (this sets the lettermap)
 		super().__init__(lettermap)
@@ -133,12 +149,10 @@ class Rotor(LetterSwitcher):
 		
 		return self.alphabet[rotatedIndex]
 		
-	#returns the 'output letter' given a letter
-	#that has been run through the lettermap
-	#this is to account for the entire rotor rotating
-	#and so the output pin will not necessarily align with the
-	#letter coming out of the lettermap
-	#private as it should only be used internally
+	#rotate the output of this rotor using rotorPosition
+	#this is done to account for the entire rotor rotating
+	#getRotatedLetter is used to account for the rotation of input,
+	#whereas this is used to account for the rotation of output
 	def _getOutputLetter(self, letter):
 		
 		letterIndex = self.alphabet.index(letter)
@@ -155,6 +169,10 @@ class Rotor(LetterSwitcher):
 	def incrementRotor(self):
 		
 		self.rotorPosition += 1
+		#Normally I would use >= 26, but doing it this way
+		#ensures that if someone manually sets the rotor position to something
+		#outside this range, the rotor will continue incrementing as normal instead of
+		#mysteriously "incrementing" from 252 to 0
 		if self.rotorPosition == 26:
 			self.rotorPosition = 0
 	
@@ -165,7 +183,7 @@ class Rotor(LetterSwitcher):
 		
 	
 	#returns true if the notch is in position
-	#to increment the next rotor on this rotor's next turn
+	#to increment the next rotor (the rotor to the left) on this rotor's next turn
 	def notchInPosition(self):
 		return self.rotorPosition == self.notchPosition
 	
@@ -177,6 +195,17 @@ class Rotor(LetterSwitcher):
 		
 		swappedLetter = super().switchLetter(rotatedLetter)
 		
+		return self._getOutputLetter(swappedLetter)
+
+	#override switchLetterReverse to include rotation
+	#this is important as signals travel through all 3 rotors forward AND back
+	#on each keypress
+	def switchLetterReverse(self, letter):
+
+		rotatedLetter = self.getRotatedLetter(letter)
+
+		swappedLetter = super().switchLetterReverse(rotatedLetter)
+
 		return self._getOutputLetter(swappedLetter)
 		
 		
@@ -196,8 +225,10 @@ if __name__ == '__main__':
 	encode = Rotor(RotorType.I)
 	
 	print(encode.switchLetter('a'))
+	print(encode.switchLetterReverse('e'))
 	encode.incrementRotor()
 	print(encode.switchLetter('a'))
+	print(encode.switchLetterReverse('j'))
 	
 	
 	

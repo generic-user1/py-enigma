@@ -10,6 +10,15 @@ class Plugboard(LetterSwitcher):
 			raise LettermapException("Provided lettermap is invalid: {}".format(repr(lettermap)))
 		else:
 			self.lettermap = lettermap
+
+	#override constructor to automatically set the default lettermap
+	#this allows a plugboard to be used right after instantiation with no further calls
+	def __init__(self):
+		lettermap = self.getDefaultLettermap()
+		super().__init__(lettermap)
+
+
+	#TODO: create easy methods for 'plugging' or 'unplugging'
 		
 if __name__ == '__main__':
 	
