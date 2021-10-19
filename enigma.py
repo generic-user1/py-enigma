@@ -26,9 +26,9 @@ class Enigma():
         #each rotor is stored in its own variable
         #this will have to be changed for 4-rotor (or more)
         #configurations
-        self.rightmostRotor = None
+        self.rightRotor = None
         self.middleRotor = None
-        self.leftmostRotor = None
+        self.leftRotor = None
 
         self.reflector = None
 
@@ -39,13 +39,13 @@ class Enigma():
 
     #define methods for setting up each configurable piece of the machine
     def setRightRotor(self, rotorType):
-        self.rightmostRotor = Rotor(rotorType)
+        self.rightRotor = Rotor(rotorType)
 
     def setMiddleRotor(self, rotorType):
         self.middleRotor = Rotor(rotorType)
 
     def setLeftRotor(self, rotorType):
-        self.leftmostRotor = Rotor(rotorType)
+        self.leftRotor = Rotor(rotorType)
 
     def setReflector(self, reflectorType):
         self.reflector = Reflector(reflectorType)
@@ -57,14 +57,14 @@ class Enigma():
             raise EnigmaException("Enigma cannot be used before reflector is set using Engigma.setReflector(reflectorType)")
         else:
             missingRotor = None
-            if self.rightmostRotor == None:
-                missingRotor = 'Rightmost Rotor'
+            if self.rightRotor == None:
+                missingRotor = 'Right Rotor'
                 method = 'setRightRotor'
             elif self.middleRotor == None:
                 missingRotor = 'Middle Rotor'
                 method = 'setMiddleRotor'
-            elif self.leftmostRotor == None:
-                missingRotor = 'Leftmost Rotor'
+            elif self.leftRotor == None:
+                missingRotor = 'Left Rotor'
                 method = 'setLeftRotor'
 
             if missingRotor != None:
@@ -80,21 +80,108 @@ class Enigma():
         enigma.setLeftRotor(RotorType.III)
         return enigma
 
+    #increments the rotors 
+    #uses appropriate rules for each rotor 
+    #(details within method definition)
+    def incrementRotors(self):
+        
+        #determine if the middle rotor should increment
+        #due to the right rotor's position
+        middleRotates = self.leftRotor.notchInPosition()
+        
+        
+        #increment the right rotor,
+        #as the right rotor rotates with every keypress
+        self.rightRotor.incrementRotor()
+        
+        #determine if the left rotor should increment
+        #due to the middle rotor's position
+        leftRotates = self.middleRotor.notchInPosition()
+        
+        #note: due to the ratchet/pawl system used in the Engima,
+        #there is a quirk of the rotation of the middle rotor:
+        #it will rotate BOTH when the right rotor's notch is in position,
+        #AND when its own notch is in position; this is called "double step",
+        #so called because the middle rotor will rotate on two keypresses in a row
+        
+        #this behavior is simulated by rotating the middle rotor either if 
+        #the left rotor's notch is in position, or if its own notch is in position
+        if leftRotates:
+            #the left rotor only rotates if the middle rotor's notch is in position
+            self.leftRotor.incrementRotor()
+            self.middleRotor.incrementRotor()
+        elif middleRotates:
+            self.middleRotor.incrementRotor()
+        
     
     #takes a letter as input, runs it through the Enigma process, and returns the result
     #increments rotors as needed
     def encodeLetter(self, letter):
 
         #validate the letter before doing anything else
-        self.validateLetter(letter)
+        Rotor.validateLetter(letter)
+
+        #increment the rotors
+        self.incrementRotors()
 
         #run the letter through the plugboard
-        plugboardedLetter = self.plugboard.switchLetter(letter)
+        letter = self.plugboard.switchLetter(letter)
 
-        #run the letter through each rotor
-        #TODO: finish encodeLetter
-        raise NotImplementedError("Encode Letter is unfinished at this time")
+        #run the letter through each rotor from right to left
+        letter = self.rightRotor.switchLetter(letter)
+        letter = self.middleRotor.switchLetter(letter)
+        letter = self.leftRotor.switchLetter(letter)
+        
+        #run the letter through the reflector
+        letter = self.reflector.switchLetter(letter)
+        
+        #run the letter back through the rotors,
+        #this time from left to right
+        letter = self.leftRotor.switchLetterReverse(letter)
+        letter = self.middleRotor.switchLetterReverse(letter)
+        letter = self.rightRotor.switchLetterReverse(letter)
+        
+        #run the letter back through the plugboard
+        letter = self.plugboard.switchLetter(letter)
+        
+        
 
+        #return the letter
+        return letter
+        
+    #return the current rotor positions as a 3-tuple
+    #(left, middle, right)
+    def getWindowLetters(self):
+        return (
+            self.leftRotor.getWindowLetter(),
+            self.middleRotor.getWindowLetter(),
+            self.rightRotor.getWindowLetter()
+            )
+
+    #reset rotors to AAA position
+    def resetRotors(self):
+        self.leftRotor.rotorPosition = 0
+        self.middleRotor.rotorPosition = 0
+        self.rightRotor.rotorPosition = 0
+    
+    #encodes a message (must be string or other iterable of single charachters)
+    #removes spaces and converts to lowercase automatically
+    #due to the design of the Enigma (both real and by extention this simulation), 
+    #this method can be used both to encode a message AND decode a message, assuming
+    #the configurations of the encoder and decoder machines are identical
+    def encodeMessage(self, message):
+        
+        encodedMessage = ""
+        
+        for letter in message:
+            #skip spaces
+            if letter == ' ':
+                continue
+            
+            encodedLetter = self.encodeLetter(letter.lower())
+            encodedMessage += encodedLetter
+
+        return encodedMessage
     
 
     
@@ -102,6 +189,21 @@ class Enigma():
 if __name__ == "__main__":
     
     enigma = Enigma.getDefaultEnigma()
+    
+    #test Enigma
+    msg = 'hello world'
+    print(msg)
+
+    #encode a message
+    encMsg = enigma.encodeMessage(msg)
+    print(encMsg)
+    #expected output for default enigma: mfnczbbfzm
+
+    #decode that message by resetting the machine and using it as a decoder
+    enigma.resetRotors()
+    decMsg = enigma.encodeMessage(encMsg)
+    print(decMsg)
+    #expected output: helloworld
 
 
 
