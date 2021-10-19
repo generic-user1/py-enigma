@@ -162,8 +162,7 @@ class InteractiveEnigma(Enigma):
     #like the builtin input() but doesn't wait for enter; just returns the first char typed
     #thanks, author of
     # https://docs.python.org/2.7/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
-    #this is a hack and should be replaced with something better
-    #TODO: replace getSingleLetter with a better solution
+    #there may be a more os-independant way of doing this
     @staticmethod
     def getSingleLetter():
         import sys, os
@@ -171,31 +170,50 @@ class InteractiveEnigma(Enigma):
         #use windows library if applicable
         if os.name == "nt":
             import msvcrt
-            return msvcrt.getch().decode().lower()
+            inputLetter == msvcrt.getch().decode().lower()
+            #if input was a 'break' character (CTRL + C), raise a KeyboardInterrupt
+            #there may be a better way to do this, but this is simple enough and works
+            #on windows systems (unix-like systems raise KeyboardInterrupt upon input)
+            if inputLetter == '\x03':
+                raise KeyboardInterrupt
+            else:
+                return inputLetter
         else:
-            import termios, fcntl
+            #use unix terminal control library if not on windows
+            import termios
 
-            fd = sys.stdin.fileno()
+            #get file descriptor for stdin stream
+            fileDescriptor = sys.stdin.fileno()
 
-            oldterm = termios.tcgetattr(fd)
-            newattr = termios.tcgetattr(fd)
-            newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-            termios.tcsetattr(fd, termios.TCSANOW, newattr)
+            #save a copy of the stream config so we can reset it later
+            oldConfig = termios.tcgetattr(fileDescriptor)
+            
+            #get a copy of the stream config to modify
+            newConfig = termios.tcgetattr(fileDescriptor)
+            
+            #set the canonical mode flag (ICANON) to false in the new stream config
+            #this allows input to be read immediately rather than waiting for ENTER
+            #also set the ECHO flag to false 
+            #(this prevents auto-printing of the typed char)
+            newConfig[3] = newConfig[3] & ~termios.ICANON & ~termios.ECHO
 
-            oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
+            #the TCSANOW flag forces this change to happen immediately
+            termios.tcsetattr(fileDescriptor, termios.TCSANOW, newConfig)
+
+            #read a single character
             try:
-                while 1:
-                    try:
-                        c = sys.stdin.read(1)
-                        if c != '':
-                            return c
-                    except IOError: 
-                        pass
+                charRead = sys.stdin.read(1)
+            #before returning (and even if an error occurs),
+            #reset the configuration on the stdin stream
             finally:
-                termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
-                fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+                #the TCSAFLUSH flag waits to make this change until 
+                #after the read character has been transmitted
+                #this also 'flushes' any additional characters, if they exist
+                termios.tcsetattr(fileDescriptor, termios.TCSAFLUSH, oldConfig)
+
+            #return the single character
+            return charRead.lower()
 
         
 
@@ -225,19 +243,153 @@ class InteractiveEnigma(Enigma):
             self.clearScreen()
             #if a backspace was typed, remove the last char from the message (and encrypted counterpart)
             #then decrement the rotors
-            if offendingValue == '\b' and len(self.message) > 0:
+            #\b is used on windows, \x7f is used on unix-like systems
+            if (offendingValue == '\b' or offendingValue == '\x7f') and len(self.message) > 0:
                 self.message = self.message[:-1]
                 self.encodedMessage = self.encodedMessage[:-1]
                 self.decrementRotors()
-            #if the character typed was a 'Break' character (CTRL + C), end the loop
-            #this effectively handles keyboard interrupts
-            elif offendingValue == '\x03':
-                print(self.getBoxStr())
-                break
+            #show error message if input was invalid
             elif offendingValue != None:
                 print(f"Invalid Input: {repr(offendingValue)}")
 
-            offendingValue  = self.acceptInput()
+            #handle KeyboardInterrupt exceptions
+            try:
+                offendingValue  = self.acceptInput()
+            except KeyboardInterrupt:
+                print(self.getBoxStr())
+                break
+
+    #print the valid rotor types
+    @staticmethod
+    def printRotorTypes():
+        print("Supported Rotor Types:")
+        for typeName in map(lambda x: x.name, RotorType):
+            print(f" {typeName}")
+
+    #return a set of rotor instances along with their names
+    def getRotorsWithNames(self):
+        rotors = self.getRotors()
+
+        rotorsWithNames = (
+            'Left Rotor', rotors[0],
+            'Middle Rotor', rotors[1],
+            'Right Rotor', rotors[2]
+            )
+        return rotorsWithNames
+
+    #prompt user for rotor type input
+    def inputRotorTypes(self):
+
+        useDefaultRotorTypes = None
+        while useDefaultRotorTypes == None:
+            print("Use Default Rotor Types? (y/n): ", end="")
+            response = self.getSingleLetter()
+            #print response char as getSingleLetter does not echo input
+            #this also prints a newline, which is important because the previous line
+            #does not end with one
+            print(response)
+            if response != "y" and response != "n":
+                print(f"Invalid Input: {repr(response)}. Please type y or n\n")
+            else:
+                useDefaultRotorTypes = response == 'y'
+
+        #set default rotor types if user input the letter y
+        if useDefaultRotorTypes:
+            self.setRightRotor(RotorType.I)
+            self.setMiddleRotor(RotorType.II)
+            self.setLeftRotor(RotorType.III)
+        
+        else:
+            #otherwise, prompt for a rotorType for each rotor
+            rotors = (
+                ('Right Rotor', self.setRightRotor),
+                ('Middle Rotor', self.setMiddleRotor),
+                ('Left Rotor', self.setLeftRotor)
+                )
+                
+            for rotorName, rotorSetMethod in rotors:
+                choice = None
+                while choice == None:
+                    #use the normal input function to allow for multiple characters 
+                    response = input(f"Specify Rotor Type for {rotorName} (o for options): ")
+                    #print(response)
+
+                    if response == 'o':
+                        self.printRotorTypes()
+                    else:
+                        #try converting input to a rotor type
+                        try:
+                            selectedRotorType = RotorType[response.upper()]
+                        except KeyError:
+                            #if a KeyError is raised, input is not a valid rotor type
+                            print(f"Invalid Input: {repr(response)}. Please input a valid Rotor Type.")
+                            self.printRotorTypes()
+                        else:
+                            choice = selectedRotorType
+
+                #set selected rotor type
+                rotorSetMethod(choice)
+                        
+                    
+    #prompt user to input ring settings
+    def inputRingSettings(self):
+        
+        #ask to use default ringSettings
+        useDefaultRingSettings = None
+        while useDefaultRingSettings == None:
+            print("Use Default Ring Settings? (y/n): ", end="")
+            response = self.getSingleLetter()
+            #print response char as getSingleLetter does not echo input
+            #this also prints a newline, which is important because the previous line
+            #does not end with one
+            print(response)
+            if response != "y" and response != "n":
+                print(f"Invalid Input: {repr(response)}. Please type y or n\n")
+            else:
+                useDefaultRingSettings = response == 'y'
+        
+        #if default ring settings selected, do not prompt for ring setting input
+        #ring settings default to A-01, this is defined within the Rotor class
+        if not useDefaultRingSettings:
+
+            #for each rotor, prompt user for a ring setting
+            rotors = self.getRotorsWithNames()
+            for rotorName, rotorInstance in rotors:
+                choice = None
+                while choice == None:
+                    print(f"Specify ring setting for {rotorName}: ", end="")
+                    response = self.getSingleLetter()
+                    print(response)
+                    
+                    #try validating input as a ring setting
+                    try:
+                        Rotor.validateRingSetting(response)
+                    except ValueError:
+                        #if a ValueError is raised, response is not a valid ring setting
+                        print(f"""Invalid Input: {repr(response)}. 
+Please input the ring setting as the letter that aligns with the marked contact on the rotor. 
+(single letter, a to z)""")
+                    else:
+                        choice = response
+
+                #set selected rotor type
+                rotorInstance.setRingSetting(choice)
+
+    
+    #prompt user to input plug settings
+    #TODO: finish inputPlugs
+    def inputPlugs(self):
+
+        raise NotImplementedError("inputPlugs is not yet finished")
+        
+        addMorePlugs = True
+        while addMorePlugs:
+
+            print("Input a letter to start a plug, or ! to stop adding plugs")
+            response = self.getSingleLetter()
+            print(response)
+
+
 
             
 
@@ -246,9 +398,7 @@ class InteractiveEnigma(Enigma):
 if __name__ == '__main__':
 
     enigma = InteractiveEnigma().getDefaultEnigma()
-    enigma.plugboard.addPlug('a','f')
-    enigma.plugboard.addPlug('z','q')
-
-    enigma.setRotorPositions(('k','d','o'))
+    enigma.inputRotorTypes()
+    enigma.inputRingSettings()
 
     enigma.inputLoop()
