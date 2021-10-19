@@ -237,6 +237,108 @@ class Enigma():
             encodedMessage += encodedLetter
 
         return encodedMessage
+
+    
+    #define a method that will return the machine's state as a dictionary
+    #this includes the reflector type, rotor types, 
+    #rotor positions, ring settings, and plugboard settings
+    def getMachineState(self):
+        
+        #gather information about the machine's state
+        
+        #get reflector type
+        reflectorType = ReflectorType(self.reflector.reflectorType)
+        
+        #get all three rotors
+        rotors = self.getRotors()
+
+        #for each rotor, get its rotorType, ring setting, and rotor position
+        rotorDicts = []
+        for rotor in rotors:
+            newRotorDict = {
+                'rotorType': RotorType(rotor.rotorType),
+                'ringSetting': Rotor.alphabet[rotor.ringSetting],
+                'rotorPosition': rotor.getRotorPosition()
+                }
+            rotorDicts.append(newRotorDict)
+        
+        #get all the plugs in the plugboard
+        plugs = self.plugboard.getPlugs()
+
+        #assemble dictionary for output
+        outputDict = {
+            'reflectorType': reflectorType,
+            'plugs': plugs,
+            'leftRotor':rotorDicts[0],
+            'middleRotor':rotorDicts[1],
+            'rightRotor':rotorDicts[2]
+            }
+        return outputDict
+
+    #given a ring setting as a letter or integer,
+    #return the (what I assume to be) official name of that setting
+    @staticmethod
+    def getRingSettingName(ringSetting):
+        
+        #validate the input and get it as an integer, if it wasn't already
+        ringSettingInt = Rotor.validateRingSetting(ringSetting)
+
+        #translate that integer to a letter
+        ringSettingLetter = Rotor.alphabet[ringSettingInt].upper()
+
+        #add 1 to the ring setting integer (so setting A outputs as A-01 rather than A-00)
+        ringSettingInt += 1
+
+        #fill in format string and return
+        return f'{ringSettingLetter}-{ringSettingInt:02d}'
+
+    #get the machine's state, then print it in a human-readable format
+    def printMachineState(self):
+
+        #get the machine's state
+        state = self.getMachineState()
+
+        #print the reflector/rotor types 
+        reflectorType = state['reflectorType']
+        leftRotorType = state['leftRotor']['rotorType']
+        midRotorType = state['middleRotor']['rotorType']
+        rightRotorType = state['rightRotor']['rotorType']
+
+        rotorConfigStr = f"""REFLECTOR       LEFT ROTOR      MID ROTOR       RIGHT ROTOR
+{reflectorType.name:16}{leftRotorType.name:16}{midRotorType.name:16}{rightRotorType.name:16}
+"""
+        print(rotorConfigStr)
+
+        #print the ring setting of each ring
+        leftRingSetting = self.getRingSettingName(state['leftRotor']['ringSetting'])
+        midRingSetting = self.getRingSettingName(state['middleRotor']['ringSetting'])
+        rightRingSetting = self.getRingSettingName(state['rightRotor']['ringSetting'])
+
+        ringSettingStr = f"""RING SETTINGS:
+                {leftRingSetting:16}{midRingSetting:16}{rightRingSetting:16}
+"""
+        print(ringSettingStr)
+
+        #print the rotor positions
+        leftRotorPosition = (state['leftRotor']['rotorPosition']).upper()
+        midRotorPosition = (state['middleRotor']['rotorPosition']).upper()
+        rightRotorPosition = (state['rightRotor']['rotorPosition']).upper()
+        
+        rotorPosStr = f"""ROTOR POSITIONS:
+                {leftRotorPosition:16}{midRotorPosition:16}{rightRotorPosition:16}
+"""
+        print(rotorPosStr)
+
+        #print plugs, if there are any
+        if len(state['plugs']):
+            print("PLUGS:")
+            for letterA, letterB in state['plugs'].items():
+                print(f"{letterA.upper():} plugged to {letterB.upper():}")
+        else:
+            print("NO PLUGS")
+        #print empty line to visually seperate the printed state from
+        #whatever is printed next
+        print("")
     
 
     
@@ -252,6 +354,8 @@ if __name__ == "__main__":
     rotorPos = enigma.getRotorPositions()
 
     enigma.setRingSettings(('a','a','z'))
+
+    enigma.printMachineState()
 
     msg = 'hello world'
     print(msg)
