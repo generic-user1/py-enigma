@@ -125,15 +125,13 @@ class Rotor(LetterSwitcher):
         #this will be used as an offset to access the lettermap
 
         #initialize ring setting (sometimes called ringstellung)
-        #this is currently unused, as ring settings are not currently 
-        #supported
-        #TODO: support ring settings
+        #this affects the 
         self.ringSetting = 0
         
         #run super constructor (this sets the lettermap)
         super().__init__(lettermap)
-        
-    
+
+
     #given a letter, uses the rotorPosition instance var
     #to return which letter the specified 
     #letter will enter the 'rotor' (lettermap) as
@@ -159,7 +157,7 @@ class Rotor(LetterSwitcher):
     def _getOutputLetter(self, letter):
         
         letterIndex = self.alphabet.index(letter)
-        outputIndex = (letterIndex - self.rotorPosition) % 26
+        outputIndex = (letterIndex - (self.rotorPosition + self.ringSetting)) % 26
         return self.alphabet[outputIndex]
         
     
@@ -179,35 +177,113 @@ class Rotor(LetterSwitcher):
     
     #returns the letter you would see through the viewer
     #if you looked at this current position
-    def getWindowLetter(self):
-        return self.alphabet[self.rotorPosition]
+    #that is, the rotor's position (accounting for ring setting)
+    def getRotorPosition(self):
+        letterIndex = (self.rotorPosition + self.ringSetting) % 26
+        return self.alphabet[letterIndex]
+
+    #validates a ring setting input and returns it as an integer
+    #raises a ValueError if input is invalid
+    @classmethod
+    def validateRingSetting(cls, ringSetting):
         
+        #if ring setting is an integer, verify it is within bounds (0-25)
+        #and then return it
+        if isinstance(ringSetting, int) and ringSetting >= 0 and ringSetting <= 25:
+            return ringSetting
+        #if ring setting is a string, verify it is a single letter, then convert it to
+        #an integer and return the result
+        elif isinstance(ringSetting, str) and len(ringSetting) == 1 and ringSetting in cls.alphabet:
+            return cls.alphabet.index(ringSetting)
+        else:
+            raise ValueError("Ring setting must be a single lowercase letter or integer from 0 to 25 (inclusive)")
+
+    #alias of validateRingSetting
+    #these inputs are validated using the same procedure;
+    #this method exists in case that ever changes in the future
+    @classmethod
+    def validateRotorPosition(cls, rotorPosition):
+        try:
+            return cls.validateRingSetting(rotorPosition)
+        except ValueError:
+            #use a custom error message if invalid
+            raise ValueError("Rotor position must be a single lowercase letter or integer from 0 to 25 inclusive")
+        
+
+    #sets the rotor's rotation such that the specified letter appears in the window
+    #better than setting rotorPosition directly because it accounts for ring setting
+    def setRotorPosition(self, rotorPosition):
+       
+        #validate rotorPosition and get it as an integer
+        rotorPositionIndex = self.validateRotorPosition(rotorPosition)
+
+        self.rotorPosition = (rotorPositionIndex - self.ringSetting) % 26
+
+    #set the ring setting to the specified value
+    #raises a ValueError if the input is invalid
+    #also adjusts the rotor position to keep the window letter constant
+    def setRingSetting(self, ringSetting):
+        #note rotor position
+        rotorPos = self.rotorPosition
+        #set the ring setting after validating it
+        self.ringSetting = self.validateRingSetting(ringSetting)
+        #set the rotor position such that the window letter is kept the same
+        #this is because on real enigma machines, the rotor's position was set based on the
+        #window letter, not the actual rotation of the rotor
+        self.setRotorPosition(rotorPos)
     
     #returns true if the notch is in position
     #to increment the next rotor (the rotor to the left) on this rotor's next turn
+    #the notch is attached to the alphabet ring and thus the ring setting influences
+    #its position
     def notchInPosition(self):
-        return self.rotorPosition == self.notchPosition
+        return (self.rotorPosition + self.ringSetting) % 26 == self.notchPosition
     
+    #applies ring setting to a letter
+    #given the letter coming out of the rotor's internal wiring,
+    #returns the letter of the output pin accounting for shifting due to ring setting
+    def applyRing(self, letter):
+        
+        #convert the letter to an integer
+        letterIndex = self.alphabet.index(letter)
+
+        #apply the ring setting
+        letterIndex = (letterIndex + self.ringSetting) % 26
+
+        #return the resulting letter
+        return self.alphabet[letterIndex]
+
     
     #override switchLetter to include rotation
     def switchLetter(self, letter):
         
-        rotatedLetter = self.getRotatedLetter(letter)
+        #apply rotation to input
+        letter = self.getRotatedLetter(letter)
         
-        swappedLetter = super().switchLetter(rotatedLetter)
+        #swap letter according to internal wiring
+        letter = super().switchLetter(letter)
         
-        return self._getOutputLetter(swappedLetter)
+        #apply ring setting rotation to output
+        letter = self.applyRing(letter)
+
+        #apply full rotor rotation to output and return
+        return self._getOutputLetter(letter)
 
     #override switchLetterReverse to include rotation
     #this is important as signals travel through all 3 rotors forward AND back
     #on each keypress
     def switchLetterReverse(self, letter):
 
-        rotatedLetter = self.getRotatedLetter(letter)
+        
+        letter = self.getRotatedLetter(letter)
 
-        swappedLetter = super().switchLetterReverse(rotatedLetter)
+        letter = super().switchLetterReverse(letter)
 
-        return self._getOutputLetter(swappedLetter)
+        letter = self._getOutputLetter(letter)
+
+        letter = self.applyRing(letter)
+
+        return letter
         
         
     
@@ -225,11 +301,28 @@ if __name__ == '__main__':
     
     encode = Rotor(RotorType.I)
     
-    print(encode.switchLetter('a'))
-    print(encode.switchLetterReverse('e'))
-    encode.incrementRotor()
-    print(encode.switchLetter('a'))
-    print(encode.switchLetterReverse('j'))
+    print('switchLetter (expected e):',encode.switchLetter('a'))
+    print('switchLetterReverse (expected a):',encode.switchLetterReverse('e'))
+
+    encode.setRingSetting(1)
+    encode.setRotorPosition('a')
+    print("setting ring to B-02")
+    print("setting rotor to A")
     
+    switchedLetter = encode.switchLetter('a')
+    print('switch letter (expected k):', switchedLetter)
     
+    switchedLetter = encode.switchLetterReverse('k')
+    print('switch letter reverse (expected a):', switchedLetter)
+
+    encode.setRingSetting(5)
+    encode.setRotorPosition('y')
+    print("setting ring to F-06")
+    print("setting rotor to Y")
+    
+    switchedLetter = encode.switchLetter('a')
+    print('switch letter (expected w):', switchedLetter)
+    
+    switchedLetter = encode.switchLetterReverse('w')
+    print('switch letter reverse (expected a):', switchedLetter)
     

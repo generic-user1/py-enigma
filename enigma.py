@@ -70,6 +70,30 @@ class Enigma():
             if missingRotor != None:
                 raise EnigmaException("Enigma cannot be used before {} is set using Enigma.{}(rotorType)".format(missingRotor, method))
 
+    #set all three rotor positions
+    #accepts a 3-tuple of either single lowercase letters or integers from 0 to 25
+    #tuple should be in the structure (left, middle, right)
+    def setRotorPositions(self, rotorPositions):
+        
+        #validate that rotorPositions is a 3 tuple
+        if (not isinstance(rotorPositions, tuple)) or len(rotorPositions) != 3:
+            raise ValueError('Rotor positions must be a 3-tuple of the form (left, middle, right)')
+        
+        #set the rotor positions
+        #setRotorPosition will raise a ValueError if the input is invalid
+        self.leftRotor.setRotorPosition(rotorPositions[0])
+        self.middleRotor.setRotorPosition(rotorPositions[1])
+        self.rightRotor.setRotorPosition(rotorPositions[2])
+
+    #returns the rotors' current positions as a 3 tuple
+    #(left, middle, right)
+    def getRotorPositions(self):
+        return (
+            self.leftRotor.getRotorPosition(),
+            self.middleRotor.getRotorPosition(),
+            self.rightRotor.getRotorPosition()
+            )
+
     #define a method that returns a pre-configured Enigma (mostly for testing purposes)
     @staticmethod
     def getDefaultEnigma():
@@ -80,6 +104,14 @@ class Enigma():
         enigma.setLeftRotor(RotorType.III)
         return enigma
 
+    #define a method that returns an Enigma that is pre-configured to test double-step
+    @staticmethod
+    def getDoubleStepEnigma():
+        enigma = Enigma.getDefaultEnigma()
+        enigma.setRotorPositions(('k','d','o'))
+        return enigma
+
+
     #increments the rotors 
     #uses appropriate rules for each rotor 
     #(details within method definition)
@@ -87,7 +119,7 @@ class Enigma():
         
         #determine if the middle rotor should increment
         #due to the right rotor's position
-        middleRotates = self.leftRotor.notchInPosition()
+        middleRotates = self.rightRotor.notchInPosition()
         
         
         #increment the right rotor,
@@ -153,16 +185,16 @@ class Enigma():
     #(left, middle, right)
     def getWindowLetters(self):
         return (
-            self.leftRotor.getWindowLetter(),
-            self.middleRotor.getWindowLetter(),
-            self.rightRotor.getWindowLetter()
+            self.leftRotor.getRotorPosition(),
+            self.middleRotor.getRotorPosition(),
+            self.rightRotor.getRotorPosition()
             )
 
     #reset rotors to AAA position
     def resetRotors(self):
-        self.leftRotor.rotorPosition = 0
-        self.middleRotor.rotorPosition = 0
-        self.rightRotor.rotorPosition = 0
+        self.leftRotor.setRotorPosition('a')
+        self.middleRotor.setRotorPosition('a')
+        self.rightRotor.setRotorPosition('a')
     
     #encodes a message (must be string or other iterable of single charachters)
     #removes spaces and converts to lowercase automatically
@@ -188,24 +220,26 @@ class Enigma():
 
 if __name__ == "__main__":
     
-    enigma = Enigma.getDefaultEnigma()
-    
     #test Enigma
+
+    enigma = Enigma.getDoubleStepEnigma()
+    
+    rotorPos = enigma.getRotorPositions()
+
+    enigma.rightRotor.setRingSetting(25)
+
     msg = 'hello world'
     print(msg)
 
     #encode a message
     encMsg = enigma.encodeMessage(msg)
     print(encMsg)
-    #expected output for default enigma: mfnczbbfzm
+    #expected output for a 'double step test' enigma (rotor positions K D O)
+    #where ring setting on right rotor is 25 (Z-26):
+    #gqzzeprghu
 
     #decode that message by resetting the machine and using it as a decoder
-    enigma.resetRotors()
+    enigma.setRotorPositions(rotorPos)
     decMsg = enigma.encodeMessage(encMsg)
     print(decMsg)
     #expected output: helloworld
-
-
-
-    
-
