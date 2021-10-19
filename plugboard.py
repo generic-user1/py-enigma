@@ -3,13 +3,20 @@ from letterswitcher import LetterSwitcher, LettermapException
 
 class Plugboard(LetterSwitcher):
 
-    #allow for re-assigning lettermap after assignment
-    def setLettermap(self, lettermap):
+    #override lettermapIsValid to enforce pairing
+    def lettermapIsValid(self, lettermap):
         
-        if not self.lettermapIsValid(lettermap):
-            raise LettermapException("Provided lettermap is invalid: {}".format(repr(lettermap)))
+        isValid = super().lettermapIsValid(lettermap)
+
+        if not isValid:
+            return False
         else:
-            self.lettermap = lettermap
+            for key, val in lettermap.items():
+                if val not in lettermap.keys():
+                    return False
+                elif lettermap[val] != key:
+                    return False
+            return True
 
     #override constructor to automatically set the default lettermap
     #this allows a plugboard to be used right after instantiation with no further calls
@@ -25,38 +32,8 @@ if __name__ == '__main__':
     
     #test Plugboard
     
-    lettermap = {
-        'a': 'n', 
-        'b': 'h', 
-        'c': 'a', 
-        'd': 'l', 
-        'e': 'g', 
-        'f': 'p', 
-        'g': 'u', 
-        'h': 'z', 
-        'i': 'q', 
-        'j': 'i', 
-        'k': 'v', 
-        'l': 'r', 
-        'm': 's', 
-        'n': 'd', 
-        'o': 'e', 
-        'p': 't', 
-        'q': 'x', 
-        'r': 'y', 
-        's': 'w', 
-        't': 'o', 
-        'u': 'b', 
-        'v': 'm', 
-        'w': 'c', 
-        'x': 'k', 
-        'y': 'f', 
-        'z': 'j'
-    }
-        
     
-    encoder = Plugboard(Plugboard.getDefaultLettermap())
-    encoder.setLettermap(lettermap)
+    encoder = Plugboard()
     decoder = encoder.getDecoderInstance()
     
     msg = 'teststring'
