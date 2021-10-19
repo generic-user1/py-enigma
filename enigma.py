@@ -94,6 +94,20 @@ class Enigma():
             self.rightRotor.getRotorPosition()
             )
 
+    #set all three ring settings
+    #uses the same format as setRotorPositions
+    def setRingSettings(self, ringSettings):
+        
+        #validate that ringSettings is a 3 tuple
+        if (not isinstance(ringSettings, tuple)) or len(ringSettings) != 3:
+            raise ValueError('Ring settings must be a 3-tuple of the form (left, middle, right)')
+
+        #set the ring settings
+        #setRingSetting will raise a ValueError if the input is invalid
+        self.leftRotor.setRingSetting(ringSettings[0])
+        self.middleRotor.setRingSetting(ringSettings[1])
+        self.rightRotor.setRingSetting(ringSettings[2])
+
     #define a method that returns a pre-configured Enigma (mostly for testing purposes)
     @staticmethod
     def getDefaultEnigma():
