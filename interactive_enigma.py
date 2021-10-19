@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from os import stat
 from enigma import Enigma
 from reflector import ReflectorType
 from rotor import Rotor, RotorType
