@@ -96,14 +96,19 @@ class LetterSwitcher():
 		if lettermap != None:
 			self.setLettermap(lettermap)
 	
+	#raise a ValueError if letter is not a single, lowercase letter
+	@classmethod		
+	def validateLetter(self, letter):
+		if len(letter) > 1 or letter not in self.alphabet:
+			raise ValueError('Letter must be a single, lowercase letter')
+	
 	
 	#takes a given letter and returns its corresponding letter
 	#according to the internal lettermap of this LetterSwitcher
 	def switchLetter(self, letter):
 	
 		#raise exception if letter is not a single lowercase letter
-		if letter not in self.alphabet:
-			raise ValueError("Attempted to switch invalid letter: {}\nOnly lowercase single letters are valid".format(repr(letter)))
+		self.validateLetter(letter)
 		
 		#raise exception if no lettermap is set
 		if self.lettermap == None:
@@ -159,6 +164,28 @@ class LetterSwitcher():
 		
 		return LetterSwitcher(decoderMap)
 		
+	
+	#switch the letter using the decoder version of this lettermap
+	#also known as the 'reverse' version of this lettermap
+	def switchLetterReverse(self, letter):
+		
+		#raise exception if letter is not a single lowercase letter
+		self.validateLetter(letter)
+		
+		#raise exception if no lettermap is set
+		if self.lettermap == None:
+			raise LettermapException("Letter switching cannot be performed as there is no lettermap set")
+		
+		reversedLettermap = self.getDecoderLettermap()		
+				
+		#if the lettermap contains an entry for this letter,
+		#return the corresponding letter
+		if letter in reversedLettermap.keys():
+			return reversedLettermap[letter]
+		
+		#otherwise, just return the letter with no change
+		else:
+			return letter
 		
 		
 			
