@@ -170,7 +170,7 @@ class InteractiveEnigma(Enigma):
         #use windows library if applicable
         if os.name == "nt":
             import msvcrt
-            inputLetter == msvcrt.getch().decode().lower()
+            inputLetter = msvcrt.getch().decode().lower()
             #if input was a 'break' character (CTRL + C), raise a KeyboardInterrupt
             #there may be a better way to do this, but this is simple enough and works
             #on windows systems (unix-like systems raise KeyboardInterrupt upon input)
@@ -379,6 +379,11 @@ Please input the ring setting as the letter that aligns with the marked contact 
                 #set selected rotor type
                 rotorInstance.setRingSetting(choice)
 
+    #print plugs in a nice fomat
+    def printPlugs(self):
+        print("Current Plugs:")
+        for plugletterA, plugLetterB in self.plugboard.getPlugs().items():
+            print(f"{plugletterA.upper()} -- {plugLetterB.upper()}")
     
     #validate input for a plug letter
     #returns the letter if valid, None otherwise
@@ -389,6 +394,7 @@ Please input the ring setting as the letter that aligns with the marked contact 
             Rotor.validateLetter(plugLetter)
         except ValueError:
             print(f"Invalid Input: {repr(plugLetter)}")
+            return None
         else:
             #if letter is valid, check if it is already present in
             #the plugs. getLettermap().keys() is used because it returns
@@ -397,26 +403,34 @@ Please input the ring setting as the letter that aligns with the marked contact 
                     
             if plugLetter in pluggedLetters:
                 print(f"{plugLetter.upper()} already has a plug in it")
+                self.printPlugs()
+                return None
+                
 
             if letterA != None and letterA == plugLetter:
                 print(f"{plugLetter.upper()} cannot be plugged into itself")
+                return None
 
             else:
                 return plugLetter
+
+    
 
     #prompt user to input plug settings
     def inputPlugs(self):
         
         while True:
 
-            print("Input a letter to start a plug, or ! to stop adding plugs")
+            print("Input a letter to start a plug, ? to view current plugs, or ! to stop adding plugs")
             plugLetter = self.getSingleLetter()
             print(plugLetter)
 
             #if response was the quit char, return to exit loop
             if plugLetter == '!':
-                print(plugLetter)
                 return
+            #if response was list char, list current plugs
+            elif plugLetter == '?':
+                self.printPlugs()
             else:
                 
                 #validate the plug letter
@@ -427,7 +441,7 @@ Please input the ring setting as the letter that aligns with the marked contact 
                 #restart at top of loop if letter was invalid
                 if letterA == None:
                     continue
-               
+                
                 letterB = None
 
                 while letterB == None:
@@ -438,7 +452,7 @@ Please input the ring setting as the letter that aligns with the marked contact 
                     letterB = self._handlePlugLetter(plugLetter, letterA)
                
                 self.plugboard.addPlug(letterA, letterB)
-                print(f'Plugged {letterA} into {letterB}')
+                print(f'New Plug: {letterA.upper()} -- {letterB.upper()}')
 
 
 
@@ -453,6 +467,7 @@ Please input the ring setting as the letter that aligns with the marked contact 
 if __name__ == '__main__':
 
     enigma = InteractiveEnigma().getDefaultEnigma()
+
     enigma.inputRotorTypes()
     enigma.inputRingSettings()
     enigma.inputPlugs()
