@@ -258,8 +258,9 @@ class InteractiveEnigma(Enigma):
 
             #handle KeyboardInterrupt exceptions
             try:
-                offendingValue  = self.acceptInput()
+                offendingValue = self.acceptInput()
             except KeyboardInterrupt:
+                self.clearScreen()
                 print(self.getBoxStr())
                 break
 
