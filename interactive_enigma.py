@@ -198,11 +198,15 @@ class InteractiveEnigma(Enigma):
             newConfig[3] = newConfig[3] & ~termios.ICANON & ~termios.ECHO
 
 
-            #the TCSANOW flag forces this change to happen immediately
-            termios.tcsetattr(fileDescriptor, termios.TCSANOW, newConfig)
+            
 
-            #read a single character
+            
             try:
+                #set new config
+                #the TCSANOW option forces this change to happen immediately
+                termios.tcsetattr(fileDescriptor, termios.TCSANOW, newConfig)
+                
+                #read a single character
                 charRead = sys.stdin.read(1)
             #before returning (and even if an error occurs),
             #reset the configuration on the stdin stream
@@ -377,17 +381,67 @@ Please input the ring setting as the letter that aligns with the marked contact 
 
     
     #prompt user to input plug settings
-    #TODO: finish inputPlugs
+    #TODO: fix repeated code in inputPlugs
     def inputPlugs(self):
-
-        raise NotImplementedError("inputPlugs is not yet finished")
         
-        addMorePlugs = True
-        while addMorePlugs:
+        while True:
 
             print("Input a letter to start a plug, or ! to stop adding plugs")
             response = self.getSingleLetter()
             print(response)
+
+            #if response was the quit char, return to exit loop
+            if response == '!':
+                print(response)
+                return
+            else:
+                
+                #validate letter, print message if invalid
+                try:
+                    Rotor.validateLetter(response)
+                except ValueError:
+                    print(f"Invalid Input: {repr(response)}")
+                else:
+                    #if letter is valid, check if it is already present in
+                    #the plugs. getLettermap().keys() is used because it returns
+                    #every letter that is a member of any plug (unlike getPlugs().keys())
+                    pluggedLetters = self.plugboard.getLettermap().keys()
+                    
+                    if response in pluggedLetters:
+                        print(f"{response.upper()} already has a plug in it")
+
+                    else:
+                        letterA = response
+
+                        letterB = None
+                        #repeat the same process for letterB, but within a loop
+                        #so that invalid input doesn't reset, resulting in typing letterA again
+                        while letterB == None:
+                            
+                            print("Input second letter: ", end = "")
+                            response = self.getSingleLetter()
+                            print(response)
+
+                            try:
+                                Rotor.validateLetter(response)
+                            except ValueError:
+                                print(f"Invalid Input: {repr(response)}")
+                            else:
+                    
+                                pluggedLetters = self.plugboard.getLettermap().keys()
+                    
+                                if response in pluggedLetters:
+                                    print(f"{response.upper()} already has a plug in it")
+
+                                else: 
+                                    letterB = response
+                        
+                        self.plugboard.addPlug(letterA, letterB)
+                        print(f'Plugged {letterA} into {letterB}')
+
+
+
+
 
 
 
@@ -400,5 +454,6 @@ if __name__ == '__main__':
     enigma = InteractiveEnigma().getDefaultEnigma()
     enigma.inputRotorTypes()
     enigma.inputRingSettings()
+    enigma.inputPlugs()
 
     enigma.inputLoop()
