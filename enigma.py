@@ -194,15 +194,6 @@ class Enigma():
 
         #return the letter
         return letter
-        
-    #return the current rotor positions as a 3-tuple
-    #(left, middle, right)
-    def getWindowLetters(self):
-        return (
-            self.leftRotor.getRotorPosition(),
-            self.middleRotor.getRotorPosition(),
-            self.rightRotor.getRotorPosition()
-            )
 
     #reset rotors to AAA position
     def resetRotors(self):
