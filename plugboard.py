@@ -60,6 +60,28 @@ class Plugboard(LetterSwitcher):
         del self.lettermap[pluggedLetter]
         del self.lettermap[assocLetter]
 
+    #method to return all the plugs in this plugboard as a dictionary
+    #this is different from getLettermap because it only includes each plug 
+    #once (where the lettermap contains mappings for both directions)
+    def getPlugs(self):
+        
+        outputDict = {}
+
+        #iterate through lettermap
+        for key, val in self.lettermap.items():
+            
+            #determine which keys are already in the output
+            existingKeys = outputDict.keys()
+            
+            #if this mapping doesn't exist in the output dictionary
+            #(in either direction), add it to the output
+            if key not in existingKeys and val not in existingKeys:
+                outputDict[key] = val
+        
+        return outputDict
+
+        
+
     #override switchLetterReverse to be an alias of switchLetter
     #because of the letter pairing rule; the reverse of a plugboard's 
     #lettermap is just the same lettermap again, so a special method isn't needed

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from typing import Type
 from rotor import Rotor, RotorType
 from reflector import Reflector, ReflectorType
 from plugboard import Plugboard
@@ -50,6 +51,17 @@ class Enigma():
     def setReflector(self, reflectorType):
         self.reflector = Reflector(reflectorType)
 
+    #method to return all rotor instances in a tuple
+    #(leftRotor, middleRotor, rightRotor)
+    #this is to save work later if more than three rotors are supported
+    #in the future
+    def getRotors(self):
+        return (
+            self.leftRotor,
+            self.middleRotor,
+            self.rightRotor
+        )
+
     #raise an EnigmaException if this Engima instance
     #does not yet have all of its rotors and reflector set 
     def validateEnigmaSetup(self):
@@ -88,30 +100,36 @@ class Enigma():
     #returns the rotors' current positions as a 3 tuple
     #(left, middle, right)
     def getRotorPositions(self):
-        return (
-            self.leftRotor.getRotorPosition(),
-            self.middleRotor.getRotorPosition(),
-            self.rightRotor.getRotorPosition()
-            )
+        rotorInstances = self.getRotors()
+        rotorPositions = [rotor.getRotorPosition() for rotor in rotorInstances]
+        return tuple(rotorPositions)
 
     #set all three ring settings
     #uses the same format as setRotorPositions
     def setRingSettings(self, ringSettings):
         
+        #get rotor instances
+        rotorInstances = self.getRotors()
+
         #validate that ringSettings is a 3 tuple
-        if (not isinstance(ringSettings, tuple)) or len(ringSettings) != 3:
+        if (not isinstance(ringSettings, tuple)) or len(ringSettings) != len(rotorInstances):
             raise ValueError('Ring settings must be a 3-tuple of the form (left, middle, right)')
 
         #set the ring settings
         #setRingSetting will raise a ValueError if the input is invalid
-        self.leftRotor.setRingSetting(ringSettings[0])
-        self.middleRotor.setRingSetting(ringSettings[1])
-        self.rightRotor.setRingSetting(ringSettings[2])
+        for ringSetting, rotor in zip(ringSettings, rotorInstances):
+            rotor.setRingSetting(ringSetting)
 
     #define a method that returns a pre-configured Enigma (mostly for testing purposes)
+    #supports modifying a pre-existing Enigma instance as well as creating a new instance
     @staticmethod
-    def getDefaultEnigma():
-        enigma = Enigma()
+    def getDefaultEnigma(preexistingEnigma = None):
+        if preexistingEnigma == None:
+            enigma = Enigma()
+        elif isinstance(preexistingEnigma, Enigma):
+            enigma = preexistingEnigma
+        else:
+            raise TypeError("preexistingEnigma must be an Enigma instance")
         enigma.setReflector(ReflectorType.B)
         enigma.setRightRotor(RotorType.I)
         enigma.setMiddleRotor(RotorType.II)
@@ -120,8 +138,8 @@ class Enigma():
 
     #define a method that returns an Enigma that is pre-configured to test double-step
     @staticmethod
-    def getDoubleStepEnigma():
-        enigma = Enigma.getDefaultEnigma()
+    def getDoubleStepEnigma(preexistingEnigma = None):
+        enigma = Enigma.getDefaultEnigma(preexistingEnigma)
         enigma.setRotorPositions(('k','d','o'))
         return enigma
 
@@ -233,7 +251,7 @@ if __name__ == "__main__":
     
     rotorPos = enigma.getRotorPositions()
 
-    enigma.rightRotor.setRingSetting(25)
+    enigma.setRingSettings(('a','a','z'))
 
     msg = 'hello world'
     print(msg)
