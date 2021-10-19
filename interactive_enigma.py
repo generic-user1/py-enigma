@@ -380,64 +380,65 @@ Please input the ring setting as the letter that aligns with the marked contact 
                 rotorInstance.setRingSetting(choice)
 
     
+    #validate input for a plug letter
+    #returns the letter if valid, None otherwise
+    #prints appropriate message upon invalid input
+    def _handlePlugLetter(self, plugLetter, letterA = None):
+        #validate letter, print message if invalid
+        try:
+            Rotor.validateLetter(plugLetter)
+        except ValueError:
+            print(f"Invalid Input: {repr(plugLetter)}")
+        else:
+            #if letter is valid, check if it is already present in
+            #the plugs. getLettermap().keys() is used because it returns
+            #every letter that is a member of any plug (unlike getPlugs().keys())
+            pluggedLetters = self.plugboard.getLettermap().keys()
+                    
+            if plugLetter in pluggedLetters:
+                print(f"{plugLetter.upper()} already has a plug in it")
+
+            if letterA != None and letterA == plugLetter:
+                print(f"{plugLetter.upper()} cannot be plugged into itself")
+
+            else:
+                return plugLetter
+
     #prompt user to input plug settings
-    #TODO: fix repeated code in inputPlugs
     def inputPlugs(self):
         
         while True:
 
             print("Input a letter to start a plug, or ! to stop adding plugs")
-            response = self.getSingleLetter()
-            print(response)
+            plugLetter = self.getSingleLetter()
+            print(plugLetter)
 
             #if response was the quit char, return to exit loop
-            if response == '!':
-                print(response)
+            if plugLetter == '!':
+                print(plugLetter)
                 return
             else:
                 
-                #validate letter, print message if invalid
-                try:
-                    Rotor.validateLetter(response)
-                except ValueError:
-                    print(f"Invalid Input: {repr(response)}")
-                else:
-                    #if letter is valid, check if it is already present in
-                    #the plugs. getLettermap().keys() is used because it returns
-                    #every letter that is a member of any plug (unlike getPlugs().keys())
-                    pluggedLetters = self.plugboard.getLettermap().keys()
-                    
-                    if response in pluggedLetters:
-                        print(f"{response.upper()} already has a plug in it")
+                #validate the plug letter
+                #if it is valid, letterA will be set to it
+                #if it is invalid, letterA will be set to None
+                letterA = self._handlePlugLetter(plugLetter)
 
-                    else:
-                        letterA = response
+                #restart at top of loop if letter was invalid
+                if letterA == None:
+                    continue
+               
+                letterB = None
 
-                        letterB = None
-                        #repeat the same process for letterB, but within a loop
-                        #so that invalid input doesn't reset, resulting in typing letterA again
-                        while letterB == None:
-                            
-                            print("Input second letter: ", end = "")
-                            response = self.getSingleLetter()
-                            print(response)
+                while letterB == None:
 
-                            try:
-                                Rotor.validateLetter(response)
-                            except ValueError:
-                                print(f"Invalid Input: {repr(response)}")
-                            else:
-                    
-                                pluggedLetters = self.plugboard.getLettermap().keys()
-                    
-                                if response in pluggedLetters:
-                                    print(f"{response.upper()} already has a plug in it")
-
-                                else: 
-                                    letterB = response
-                        
-                        self.plugboard.addPlug(letterA, letterB)
-                        print(f'Plugged {letterA} into {letterB}')
+                    print(f"Input the letter to be plugged into {letterA.upper()}")
+                    plugLetter = self.getSingleLetter()
+                    print(plugLetter)
+                    letterB = self._handlePlugLetter(plugLetter, letterA)
+               
+                self.plugboard.addPlug(letterA, letterB)
+                print(f'Plugged {letterA} into {letterB}')
 
 
 
