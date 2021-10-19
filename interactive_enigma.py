@@ -171,7 +171,7 @@ class InteractiveEnigma(Enigma):
         #use windows library if applicable
         if os.name == "nt":
             import msvcrt
-            return msvcrt.getch().decode()
+            return msvcrt.getch().decode().lower()
         else:
             import termios, fcntl
 
@@ -219,7 +219,7 @@ class InteractiveEnigma(Enigma):
         #initialize offendingValue 
         offendingValue = None
 
-        #accept input forever
+        #accept input forever (until keyboard interrupt)
         while True:
             
             self.clearScreen()
@@ -229,15 +229,17 @@ class InteractiveEnigma(Enigma):
                 self.message = self.message[:-1]
                 self.encodedMessage = self.encodedMessage[:-1]
                 self.decrementRotors()
+            #if the character typed was a 'Break' character (CTRL + C), end the loop
+            #this effectively handles keyboard interrupts
+            elif offendingValue == '\x03':
+                print(self.getBoxStr())
+                break
             elif offendingValue != None:
                 print(f"Invalid Input: {repr(offendingValue)}")
 
             offendingValue  = self.acceptInput()
 
             
-
-            
-
 
     
 
