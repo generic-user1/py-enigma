@@ -276,27 +276,42 @@ class InteractiveEnigma(Enigma):
         rotors = self.getRotors()
 
         rotorsWithNames = (
-            'Left Rotor', rotors[0],
-            'Middle Rotor', rotors[1],
-            'Right Rotor', rotors[2]
+            ('Left Rotor', rotors[0]),
+            ('Middle Rotor', rotors[1]),
+            ('Right Rotor', rotors[2])
             )
         return rotorsWithNames
 
-    #prompt user for rotor type input
-    def inputRotorTypes(self):
+    #prompts user to enter a yes or no
+    #has a configurable prompt
+    #uses a loop to ensure either 'y' or 'n' is entered even if preceeded by invalid input 
+    #returns the user's selection
+    @staticmethod
+    def yesNoPrompt(prompt = ""):
 
-        useDefaultRotorTypes = None
-        while useDefaultRotorTypes == None:
-            print("Use Default Rotor Types? (y/n): ", end="")
-            response = self.getSingleLetter()
+        userChoice = None
+        while userChoice == None:
+            print(f"{prompt} (y/n): ", end = "")
+            response = InteractiveEnigma.getSingleLetter()
             #print response char as getSingleLetter does not echo input
             #this also prints a newline, which is important because the previous line
             #does not end with one
             print(response)
+
+            #check if user input was valid
             if response != "y" and response != "n":
                 print(f"Invalid Input: {repr(response)}. Please type y or n\n")
             else:
-                useDefaultRotorTypes = response == 'y'
+                #if user input was valid, return a boolean 
+                #(y = True, n = False)
+                userChoice = response == 'y'
+        return userChoice
+
+
+    #prompt user for rotor type input
+    def inputRotorTypes(self):
+
+        useDefaultRotorTypes = self.yesNoPrompt("Use Default Rotor Types?")
 
         #set default rotor types if user input the letter y
         if useDefaultRotorTypes:
@@ -340,18 +355,7 @@ class InteractiveEnigma(Enigma):
     def inputRingSettings(self):
         
         #ask to use default ringSettings
-        useDefaultRingSettings = None
-        while useDefaultRingSettings == None:
-            print("Use Default Ring Settings? (y/n): ", end="")
-            response = self.getSingleLetter()
-            #print response char as getSingleLetter does not echo input
-            #this also prints a newline, which is important because the previous line
-            #does not end with one
-            print(response)
-            if response != "y" and response != "n":
-                print(f"Invalid Input: {repr(response)}. Please type y or n\n")
-            else:
-                useDefaultRingSettings = response == 'y'
+        useDefaultRingSettings = self.yesNoPrompt("Use Default Ring Settings?")
         
         #if default ring settings selected, do not prompt for ring setting input
         #ring settings default to A-01, this is defined within the Rotor class
@@ -456,6 +460,43 @@ Please input the ring setting as the letter that aligns with the marked contact 
                 print(f'New Plug: {letterA.upper()} -- {letterB.upper()}')
 
 
+    #prompt user to input rotor positions
+    def inputRotorPositions(self):
+        
+        useDefaultRotorPositions = self.yesNoPrompt("Use Default Rotor Positions?")
+
+        #if useDefaultRotorPositions selected, do not continue
+        #rotors are initialized in their default position so no 
+        #further action is needed
+        if useDefaultRotorPositions:
+            return
+        
+        #if useDefaultRotorPositions is not selected, prompt for input
+        #on each rotor position
+        rotors = self.getRotorsWithNames()
+
+        for rotorName, rotorInstance in rotors:
+
+            selectedPos = None
+            while selectedPos == None:
+                print(f"Please input the {rotorName} position: ", end = "")
+                response = self.getSingleLetter().lower()
+                print(response)
+
+                #validate response 
+                try:
+                    Rotor.validateRotorPosition(response)
+                except ValueError:
+                    #print message if input invalid
+                    print(f"Invalid Input: {repr(response)}. Please input a single letter from a to z.\n")
+                else:
+                    #if input was valid, set selectedPos to break out of while loop
+                    selectedPos = response
+
+            #set this rotor and move on to the next one
+            print(f"Setting {rotorName} to {response.upper()} position.")
+            rotorInstance.setRotorPosition(selectedPos)
+
 
 
 
@@ -471,6 +512,7 @@ if __name__ == '__main__':
 
     enigma.inputRotorTypes()
     enigma.inputRingSettings()
+    enigma.inputRotorPositions()
     enigma.inputPlugs()
 
     enigma.inputLoop()
