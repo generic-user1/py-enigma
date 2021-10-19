@@ -118,6 +118,13 @@ class InteractiveEnigma(Enigma):
     #all wrapped in a box of some charachter
     def getBoxStr(self, boxWidth = 25, boxChar = "#"):
 
+        #automatically increase box width if message is larger than it
+        messageLength = len(self.message)
+        if messageLength >= (boxWidth - 4):
+            boxWidth = messageLength + 4
+            #if box width is an even number, add one to ensure it is odd
+            if boxWidth % 2 != 1:
+                boxWidth += 1
         
         #find an offset that will center rotorPosStr, knowing it is 11 chars wide
         #the offset to center an item is:
@@ -160,46 +167,77 @@ class InteractiveEnigma(Enigma):
     #TODO: replace getSingleLetter with a better solution
     @staticmethod
     def getSingleLetter():
-        import sys, termios, fcntl, os
-        fd = sys.stdin.fileno()
+        import sys, os
 
-        oldterm = termios.tcgetattr(fd)
-        newattr = termios.tcgetattr(fd)
-        newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-        termios.tcsetattr(fd, termios.TCSANOW, newattr)
+        #use windows library if applicable
+        if os.name == "nt":
+            import msvcrt
+            return msvcrt.getch().decode()
+        else:
+            import termios, fcntl
 
-        oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+            fd = sys.stdin.fileno()
 
-        try:
-            while 1:
-                try:
-                    c = sys.stdin.read(1)
-                    if c != '':
-                        return c
-                except IOError: 
-                    pass
-        finally:
-            termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
-            fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+            oldterm = termios.tcgetattr(fd)
+            newattr = termios.tcgetattr(fd)
+            newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSANOW, newattr)
+
+            oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+
+            try:
+                while 1:
+                    try:
+                        c = sys.stdin.read(1)
+                        if c != '':
+                            return c
+                    except IOError: 
+                        pass
+            finally:
+                termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+                fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
 
         
 
-    #clears the screen, displays the box representation of the machine,
+    #displays the box representation of the machine
     #and accepts one letter of user input
+    #returns None if successful and the offending input if ValueError is thrown
     def acceptInput(self):
-        
-        self.clearScreen()
+
         print(self.getBoxStr())
         newLetter = self.getSingleLetter()
-        self.encodeLetter(newLetter)
+        try:
+            self.encodeLetter(newLetter)
+        except ValueError:
+            return newLetter
+        else:
+            return None
+        
 
     def inputLoop(self):
+        
+        #initialize offendingValue 
+        offendingValue = None
+
+        #accept input forever
         while True:
-            try:
-                self.acceptInput()
-            except ValueError:
-                print("Invalid Input!")
+            
+            self.clearScreen()
+            #if a backspace was typed, remove the last char from the message (and encrypted counterpart)
+            #then decrement the rotors
+            if offendingValue == '\b' and len(self.message) > 0:
+                self.message = self.message[:-1]
+                self.encodedMessage = self.encodedMessage[:-1]
+                self.decrementRotors()
+            elif offendingValue != None:
+                print(f"Invalid Input: {repr(offendingValue)}")
+
+            offendingValue  = self.acceptInput()
+
+            
+
+            
 
 
     
@@ -207,11 +245,9 @@ class InteractiveEnigma(Enigma):
 if __name__ == '__main__':
 
     enigma = InteractiveEnigma().getDefaultEnigma()
-    #enigma.plugboard.addPlug('a','f')
-    #enigma.plugboard.addPlug('z','q')
-    
-    enigma.inputLoop()
+    enigma.plugboard.addPlug('a','f')
+    enigma.plugboard.addPlug('z','q')
 
-    #enigma.printMachineState()
-    #enigma.encodeMessage("helloworld")
-    #print(enigma.getBoxStr())
+    enigma.setRotorPositions(('k','d','o'))
+
+    enigma.inputLoop()

@@ -176,7 +176,23 @@ class Enigma():
             self.middleRotor.incrementRotor()
         elif middleRotates:
             self.middleRotor.incrementRotor()
-        
+
+
+    #decrements the rotors
+    #uses the same rules as incrementRotors, but in reverse
+    def decrementRotors(self):
+
+        middleRotated = self.rightRotor.notchInReversePosition()
+
+        self.rightRotor.decementRotor()
+
+        leftRotated = self.middleRotor.notchInReversePosition()
+
+        if leftRotated:
+            self.leftRotor.decementRotor()
+            self.middleRotor.decementRotor()
+        elif middleRotated:
+            self.middleRotor.decementRotor()   
     
     #takes a letter as input, runs it through the Enigma process, and returns the result
     #increments rotors as needed

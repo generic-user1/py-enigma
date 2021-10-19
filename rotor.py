@@ -174,6 +174,15 @@ class Rotor(LetterSwitcher):
         #mysteriously "incrementing" from 252 to 0
         if self.rotorPosition == 26:
             self.rotorPosition = 0
+
+    #like incrementRotor, but the value goes down
+    #keeps it within the range 0 - 25 inclusive (see above)
+    def decementRotor(self):
+
+        self.rotorPosition -= 1
+
+        if self.rotorPosition == -1:
+            self.rotorPosition = 25
     
     #returns the letter you would see through the viewer
     #if you looked at this current position
@@ -238,6 +247,12 @@ class Rotor(LetterSwitcher):
     #its position
     def notchInPosition(self):
         return (self.rotorPosition + self.ringSetting) % 26 == self.notchPosition
+
+    
+    #returns true if the notch is in a position one click AFTER it would've incremented the next rotor
+    #useful for decrementing rotors
+    def notchInReversePosition(self):
+        return (self.rotorPosition + self.ringSetting) % 26 == (self.notchPosition + 1)
     
     #applies ring setting to a letter
     #given the letter coming out of the rotor's internal wiring,
